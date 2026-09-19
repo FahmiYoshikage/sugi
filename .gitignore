@@ -1,5 +1,6 @@
 # Binaries
 /sugi
+/dist/
 *.exe
 *.exe~
 *.dll
