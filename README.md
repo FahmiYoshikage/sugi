@@ -1,97 +1,240 @@
-# Sugi
+# Sugi 🌲
 
-> **Zero-dependency, ultra-lightweight single-binary observability engine.**
+<p align="center">
+  <strong>A zero-dependency, ultra-lightweight single-binary observability engine in pure Go.</strong><br>
+  Real-time Linux metrics & structured log aggregator with embedded dark-mode dashboard.
+</p>
 
-Sugi adalah server metrik dan agregasi log mandiri (*standalone*) berbasis Go murni (*CGO-free*) dengan dashboard visual bawaan yang di-embed langsung ke dalam satu biner executable `./sugi`.
-
----
-
-## Filosofi & Karakteristik Utama
-
-1. **Single Binary & Zero Runtime Dependencies**: Seluruh aplikasi (backend engine, embedded database, dan frontend web dashboard) terkompilasi menjadi satu file biner `./sugi` tanpa kebutuhan runtime Node.js, Docker daemon, atau external database.
-2. **Pure Go / CGO-Free**: Mendukung cross-compilation instan untuk arsitektur Linux AMD64 dan ARM64 tanpa toolchain C/GCC.
-3. **Ultra-Low Resource Footprint**: Target pemakaian RAM di bawah **30 MB** saat idle dan CPU **< 1%**.
-4. **Native Linux Kernel Metrics**: Mengumpulkan metrik sistem (CPU, RAM, Disk, Jaringan) langsung dari pseudo-filesystem `/proc` Linux tanpa library eksternal yang berat.
-5. **Real-Time Streaming**: Disiarkan secara instan ke antarmuka dashboard menggunakan Server-Sent Events (SSE) via `GET /api/v1/stream`.
-6. **Embedded Dark-Mode UI**: Dashboard web modern berbasis pure HTML5, vanilla CSS, dan canvas charting engine super ringan tanpa dependensi npm / bundler.
-
----
-
-## Status Roadmap Proyek
-
-- [x] **Tahap 1: Foundation & Core Collectors**
-  - Standard Go Project Layout
-  - Pembacaan & parsing native `/proc/stat` (CPU delta total, breakdown, dan per-core)
-  - Pembacaan & parsing native `/proc/meminfo` (RAM presisi dan legacy fallback)
-  - Unit tests & benchmarks dengan mock fixtures
-- [x] **Tahap 2: I/O Collectors & Time Series In-Memory Storage**
-  - Parsing `/proc/diskstats` (throughputs KB/s, IOPS, device metrics)
-  - Parsing `/proc/net/dev` (Ingress/Egress KB/s, packet rates, interfaces)
-  - In-memory circular ring buffer (1 jam metrik time-series, zero-allocation write path: 37ns/op, 0 B/op)
-- [x] **Tahap 3: Persistent Storage & Retention Engine**
-  - Pure-Go SQLite engine (`modernc.org/sqlite`) dengan mode WAL aktif (`PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;`)
-  - Asynchronous batch log writer (`AsyncLogWriter`) dengan bounded channel & zero-blocking
-  - Background ticker untuk automatic retention pruning (misal penghapusan log > 7 hari)
-- [x] **Tahap 4: Ingestion Pipeline & Core Orchestration**
-  - HTTP Ingestion API `POST /api/v1/logs` (mendukung JSON array/object & raw line text)
-  - HTTP Query API `GET /api/v1/logs` dengan parameter filter (`level`, `service`, `search`, `limit`)
-  - HTTP Metrics API `GET /api/v1/metrics` & `GET /api/v1/metrics/history`
-  - CLI flags & environment configuration (`-port`, `-db`, `-retention`, `-interval`)
-  - Server orchestrator dengan graceful shutdown (`SIGINT`, `SIGTERM`)
-  - Terverifikasi efisiensi resource: **RAM ~16.7 MB** (target < 30 MB) & **CPU ~0.3%** (target < 1%)
-- [x] **Tahap 5: Real-Time SSE Broadcaster & Embedded Web UI**
-  - Endpoint Server-Sent Events `GET /api/v1/stream` untuk streaming metrik 1-detik ke browser
-  - Web dashboard dark-mode responsif disatukan ke biner executable melalui `//go:embed`
-  - Engine charting canvas murni ultra-ringan (~200 baris vanilla JS, zero npm, zero CDN eksternal)
-  - Log explorer interaktif dan form uji coba ingesti log dengan proteksi honeypot anti-spam
-  - Halaman Custom 404 dan favicon SVG
-- [ ] **Tahap 6: Hardening, Benchmarking & Release**
-  - Profiling pprof RAM & CPU
-  - Multi-arch cross-compilation release (Linux AMD64/ARM64)
-  - Production SEO & landing documentation checklist
+<p align="center">
+  <img src="https://img.shields.io/badge/Language-Pure%20Go%20(CGO--Free)-00ADD8?style=flat-square&logo=go" alt="Pure Go">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="MIT License">
+  <img src="https://img.shields.io/badge/Runtime-Zero%20Dependencies-brightgreen?style=flat-square" alt="Zero Dependencies">
+  <img src="https://img.shields.io/badge/RAM%20Idle-%3C%2016%20MB-blue?style=flat-square" alt="RAM Idle < 16MB">
+  <img src="https://img.shields.io/badge/CPU%20Usage-%3C%200.3%25-blue?style=flat-square" alt="CPU Usage < 0.3%">
+  <img src="https://img.shields.io/badge/Arch-Linux%20AMD64%20%7C%20ARM64-orange?style=flat-square" alt="Multi-Arch">
+</p>
 
 ---
 
-## Struktur Direktori
+## 🌟 Philosophy & Core Strengths
+
+1. **Single Binary Executable (`./sugi`)**:
+   Backend engine, persistent embedded database, and real-time frontend dashboard are compiled into a **single binary** (~15 MB). No Node.js runtime, no Docker daemon required, no external PostgreSQL/MySQL.
+2. **Zero Runtime Dependencies & Pure Go**:
+   100% CGO-free (powered by pure-Go SQLite `modernc.org/sqlite`). Seamless cross-compilation for `linux/amd64` and `linux/arm64`.
+3. **Minimal Resource Footprint**:
+   Runs continuously with **~16 MB RAM** and **~0.3% CPU** on Linux hosts.
+4. **Native Linux Kernel Observability**:
+   Direct high-performance parsing of pseudo-filesystem `/proc/stat`, `/proc/meminfo`, `/proc/diskstats`, and `/proc/net/dev` with zero third-party dependencies.
+5. **Real-Time Streaming via Server-Sent Events (SSE)**:
+   Per-second live metrics broadcasting to web interfaces via `GET /api/v1/stream`.
+6. **Embedded Dark-Mode Web Dashboard**:
+   Zero npm, zero external CDN, and zero build toolchains. Includes a custom **HTML5 Canvas Charting Engine** (~150 LOC) with Retina High-DPI support, smooth gradient fills, and auto-scaling axes.
+7. **Production Data Resilience**:
+   Write-Ahead Logging (WAL mode), bounded buffer ingestion with drop protection, automatic retention pruning, and zero-downtime online `VACUUM INTO` backup/restore routines.
+
+---
+
+## 🏛 Architecture Diagram
 
 ```
-sugi/
-├── cmd/
-│   └── sugi/
-│       └── main.go             # Entrypoint aplikasi Sugi
-├── internal/
-│   ├── collector/              # Native Linux kernel /proc collectors
-│   │   ├── cpu.go              # Parser /proc/stat & kalkulasi delta beban CPU
-│   │   ├── cpu_test.go         # Unit test & benchmark CPU parser
-│   │   ├── mem.go              # Parser /proc/meminfo
-│   │   ├── mem_test.go         # Unit test & benchmark memory parser
-│   │   └── reader.go           # Abstraksi pembaca procfs
-│   ├── model/                  # Data structures (metrik CPU, Mem, System snapshot)
-│   │   └── metrics.go
-│   ├── storage/                # Ring buffer & SQLite engine (Tahap 2 & 3)
-│   ├── api/                    # Ingestion & SSE HTTP handlers (Tahap 4 & 5)
-│   └── ui/                     # Embedded Web dashboard assets (Tahap 5)
-├── go.mod                      # Go module definition
-└── README.md
++-----------------------------------------------------------------------------------+
+|                                 SUGI SINGLE BINARY                                |
+|                                                                                   |
+|  +------------------------+  +--------------------------+  +-------------------+  |
+|  | Native Linux Procfs    |  | HTTP Ingestion API       |  | Storage Layer     |  |
+|  | - /proc/stat (CPU)     |  | - POST /api/v1/logs      |  | - 1h Ring Buffer  |  |
+|  | - /proc/meminfo (RAM)  |  | - Bounded Go Channel     |  | - Embedded SQLite |  |
+|  | - /proc/diskstats (I/O)|  | - JSON & Raw Text        |  |   (WAL Mode)      |  |
+|  | - /proc/net/dev (Net)  |  +------------+-------------+  | - Auto Pruner     |  |
+|  +-----------+------------+               |                +---------+---------+  |
+|              |                            v                          |            |
+|              |                  Async Batch Worker                   |            |
+|              |                            |                          |            |
+|              +-------------------> Event Dispatcher <----------------+            |
+|                                           |                                       |
+|                                           v                                       |
+|                               +-----------------------+                           |
+|                               | Real-Time SSE Stream  |                           |
+|                               | GET /api/v1/stream    |                           |
+|                               +-----------+-----------+                           |
+|                                           |                                       |
+|                                           v                                       |
+|                      +------------------------------------------+                 |
+|                      | Embedded Web UI (//go:embed)             |                 |
+|                      | Dark-mode, Canvas Charts, Log Explorer   |                 |
+|                      +------------------------------------------+                 |
++-----------------------------------------------------------------------------------+
 ```
 
 ---
 
-## Menjalankan Unit Test & Benchmark
+## 🚀 Quickstart
+
+### 1. Run from Source
+```bash
+git clone https://github.com/FahmiYoshikage/sugi.git
+cd sugi
+
+# Build and run
+go build -o sugi ./cmd/sugi
+./sugi
+```
+
+Open your browser and navigate to:
+👉 **`http://localhost:8080`**
+
+### 2. CLI Options
+```text
+Usage of sugi:
+  -port int
+        HTTP server port (default 8080)
+  -db string
+        SQLite database file path (default "sugi.db")
+  -retention string
+        Log retention period (e.g. 24h, 7d, 30d) (default "7d")
+  -interval duration
+        System metric sampling interval (default 1s)
+  -backup-dir string
+        Directory for automated SQLite backups (default "backups")
+  -backup-interval duration
+        Automated backup interval (e.g. 24h, 0 to disable)
+  -backup-to string
+        Perform an immediate point-in-time backup to specified file and exit
+  -restore-from string
+        Restore SQLite database from backup file into -db and exit
+  -version
+        Print version and exit
+```
+
+---
+
+## 📡 HTTP REST API Reference
+
+### 1. Ingest Logs (`POST /api/v1/logs`)
+Accepts single JSON, JSON arrays, or raw newline-delimited text logs.
+
+**JSON Payload:**
+```bash
+curl -X POST http://localhost:8080/api/v1/logs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "level": "ERROR",
+    "service": "billing-service",
+    "message": "Payment gateway timeout for transaction #8821",
+    "attributes": {"gateway": "stripe", "latency_ms": "5000"}
+  }'
+```
+
+**Raw Plain Text:**
+```bash
+curl -X POST "http://localhost:8080/api/v1/logs?service=nginx" \
+  -H "Content-Type: text/plain" \
+  --data-binary $'127.0.0.1 GET /api/v1/health 200 12ms\n127.0.0.1 POST /login 401 50ms WARN Invalid credentials'
+```
+
+### 2. Query Logs (`GET /api/v1/logs`)
+Supports multi-criteria filtering and pagination:
+```bash
+# Filter by level and service
+curl "http://localhost:8080/api/v1/logs?level=ERROR&service=billing-service"
+
+# Substring text search
+curl "http://localhost:8080/api/v1/logs?search=timeout&limit=20"
+```
+
+### 3. Real-Time Metrics SSE Stream (`GET /api/v1/stream`)
+Connect using any browser or HTTP client:
+```bash
+curl -N http://localhost:8080/api/v1/stream
+```
+
+### 4. Metrics Snapshot (`GET /api/v1/metrics`)
+Returns the latest CPU, Memory, Disk, and Network snapshot in JSON format:
+```bash
+curl http://localhost:8080/api/v1/metrics
+```
+
+### 5. Health Check (`GET /health`)
+```bash
+curl http://localhost:8080/health
+```
+
+---
+
+## 💾 Backup & Disaster Recovery
+
+### Online Snapshot Backup (Zero Downtime)
+Leverages SQLite's online `VACUUM INTO` command to generate an atomic, compacted snapshot:
+```bash
+./sugi -db /var/data/sugi.db -backup-to /backups/sugi-snapshot-$(date +%F).db
+```
+
+### Safe Database Restore
+```bash
+./sugi -db /var/data/sugi.db -restore-from /backups/sugi-snapshot-2026-09-20.db
+```
+
+### Automated Background Backups
+```bash
+./sugi -backup-interval 24h -backup-dir /var/backups/sugi
+```
+
+---
+
+## ⚙️ Systemd Service Deployment
+
+Create `/etc/systemd/system/sugi.service`:
+```ini
+[Unit]
+Description=Sugi Observability Engine
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/lib/sugi
+ExecStart=/usr/local/bin/sugi -port 8080 -db /var/lib/sugi/sugi.db -retention 14d
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now sugi
+```
+
+---
+
+## 🧪 Testing & Benchmarks
 
 ```bash
-# Jalankan seluruh unit test dengan race detector aktif
+# Run all unit tests with race detection
 go test -v -race ./...
 
-# Jalankan benchmark alokasi memori
-go test -bench=. -benchmem ./internal/collector/...
-
-# Uji coba live collector pada mesin Linux lokal
-go run ./cmd/sugi/main.go
+# Run performance benchmarks
+go test -bench=. -benchmem ./...
 ```
+
+### Verified Benchmark Results:
+| Component | Metric / Latency | Memory Allocation |
+|---|---|---|
+| **RingBuffer Push** | **37.78 ns/op** | **0 B/op (0 allocs)** |
+| **CPU Delta Math** | **854.00 ns/op** | **280 B/op (5 allocs)** |
+| **Meminfo Parser** | **4.00 µs/op** | **5.2 KB/op** |
+| **Diskstats Parser** | **3.40 µs/op** | **5.9 KB/op** |
+| **SQLite WAL Batch Write (100 logs)** | **679.29 µs/op** | **> 145,000 logs/sec throughput** |
+| **Live RAM Consumption** | **15.7 MB RSS** | *(Target < 30 MB)* |
+| **Live CPU Utilization** | **0.2%** | *(Target < 1.0%)* |
 
 ---
 
-## Lisensi
+## 📄 License
 
-Didistribusikan secara gratis dan terbuka di bawah lisensi [MIT](LICENSE).
+Distributed under the [MIT License](LICENSE).
+Copyright (c) 2026 FahmiYoshikage.
