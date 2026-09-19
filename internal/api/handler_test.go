@@ -28,7 +28,7 @@ func setupTestServer(t *testing.T) (*APIHandler, http.Handler, *storage.AsyncLog
 	cfg.FlushInterval = 50 * time.Millisecond
 	writer := storage.NewAsyncLogWriter(sqlStorage, cfg)
 
-	h := NewAPIHandler(rb, sqlStorage, writer, "v0.1.0-test")
+	h := NewAPIHandler(rb, sqlStorage, writer, nil, "v0.1.0-test")
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

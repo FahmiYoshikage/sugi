@@ -19,6 +19,7 @@ type APIHandler struct {
 	ringBuffer *storage.RingBuffer
 	sqlite     *storage.SQLiteStorage
 	logWriter  *storage.AsyncLogWriter
+	sseHub     *SSEHub
 	startTime  time.Time
 	version    string
 }
@@ -28,15 +29,25 @@ func NewAPIHandler(
 	ringBuffer *storage.RingBuffer,
 	sqlite *storage.SQLiteStorage,
 	logWriter *storage.AsyncLogWriter,
+	sseHub *SSEHub,
 	version string,
 ) *APIHandler {
+	if sseHub == nil {
+		sseHub = NewSSEHub()
+	}
 	return &APIHandler{
 		ringBuffer: ringBuffer,
 		sqlite:     sqlite,
 		logWriter:  logWriter,
+		sseHub:     sseHub,
 		startTime:  time.Now().UTC(),
 		version:    version,
 	}
+}
+
+// SSEHub returns the associated SSEHub.
+func (h *APIHandler) SSEHub() *SSEHub {
+	return h.sseHub
 }
 
 // RegisterRoutes registers all REST endpoints on the provided ServeMux.
@@ -45,6 +56,7 @@ func (h *APIHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/logs", h.HandleQueryLogs)
 	mux.HandleFunc("GET /api/v1/metrics", h.HandleGetMetrics)
 	mux.HandleFunc("GET /api/v1/metrics/history", h.HandleGetMetricsHistory)
+	mux.HandleFunc("GET /api/v1/stream", h.HandleSSEStream)
 	mux.HandleFunc("GET /health", h.HandleHealth)
 	mux.HandleFunc("GET /api/v1/health", h.HandleHealth)
 }
