@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sugi - Zero-dependency, ultra-lightweight single-binary observability engine and real-time dashboard.">
+  <title>Sugi Observability Engine</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="header">
+    <a href="/" class="brand">
+      <svg viewBox="0 0 64 64" fill="none">
+        <rect width="64" height="64" rx="14" fill="#161b22"/>
+        <rect x="1" y="1" width="62" height="62" rx="13" stroke="#30363d" stroke-width="2"/>
+        <path d="M12 36 L22 36 L27 18 L34 46 L40 28 L44 36 L52 36" stroke="#3fb950" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="34" cy="46" r="3" fill="#58a6ff"/>
+        <circle cx="27" cy="18" r="3" fill="#58a6ff"/>
+      </svg>
+      <div>
+        <div class="brand-title">SUGI</div>
+      </div>
+      <span class="brand-tag">v0.1.0</span>
+    </a>
+
+    <div class="header-meta">
+      <div id="status-badge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-text">Connecting SSE...</span>
+      </div>
+      <a href="https://github.com/FahmiYoshikage/sugi" target="_blank" rel="noopener" class="btn" title="Star on GitHub">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        <span>GitHub Star</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Dashboard View -->
+  <main class="container">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <span>Dashboard</span> &gt; <span style="color:var(--text-primary);">Host Metrics & Logs</span>
+    </nav>
+
+    <!-- Top KPI Cards -->
+    <section class="grid-cards" aria-label="System Metrics Summary">
+      <!-- CPU -->
+      <div class="card">
+        <div class="card-title">
+          <span>CPU Utilization</span>
+          <span style="color:var(--accent-green);font-size:0.75rem;">HOST</span>
+        </div>
+        <div id="val-cpu" class="card-value">0.0%</div>
+        <div id="sub-cpu" class="card-subtitle">User 0.0% | Sys 0.0%</div>
+        <div class="bar-track">
+          <div id="bar-cpu" class="bar-fill fill-cpu" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Memory -->
+      <div class="card">
+        <div class="card-title">
+          <span>RAM Usage</span>
+          <span style="color:var(--accent-blue);font-size:0.75rem;">PHYSICAL</span>
+        </div>
+        <div id="val-mem" class="card-value">0 MB</div>
+        <div id="sub-mem" class="card-subtitle">0.0% of 0.0 GB</div>
+        <div class="bar-track">
+          <div id="bar-mem" class="bar-fill fill-mem" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Disk I/O -->
+      <div class="card">
+        <div class="card-title">
+          <span>Disk Write I/O</span>
+          <span style="color:var(--accent-orange);font-size:0.75rem;">THROUGHPUT</span>
+        </div>
+        <div id="val-disk" class="card-value">0.0 KB/s</div>
+        <div id="sub-disk" class="card-subtitle">Read: 0.0 KB/s (0 IOPS)</div>
+        <div class="bar-track">
+          <div id="bar-disk" class="bar-fill fill-disk" style="width: 25%;"></div>
+        </div>
+      </div>
+
+      <!-- Network -->
+      <div class="card">
+        <div class="card-title">
+          <span>Network Bandwidth</span>
+          <span style="color:var(--accent-green);font-size:0.75rem;">TOTAL I/O</span>
+        </div>
+        <div id="val-net" class="card-value">0.0 KB/s</div>
+        <div id="sub-net" class="card-subtitle">Rx: 0.0 KB/s | Tx: 0.0 KB/s</div>
+        <div class="bar-track">
+          <div id="bar-net" class="bar-fill fill-net" style="width: 15%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Multi-Core CPU Grid -->
+    <section class="card" style="margin-bottom: 1.5rem;">
+      <div class="card-title">
+        <span>Per-Core Breakdown (/proc/stat)</span>
+        <span style="color:var(--text-muted);font-size:0.75rem;">Delta Math</span>
+      </div>
+      <div id="core-grid" class="core-grid">
+        <!-- Injected via JavaScript -->
+        <div style="color:var(--text-muted);font-size:0.8rem;">Sampling cores...</div>
+      </div>
+    </section>
+
+    <!-- Real-time Canvas Charts Grid -->
+    <section class="grid-charts" aria-label="Real-time Charts">
+      <!-- CPU Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">CPU Utilization History (60s)</div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#3fb950;"></span>Total</span>
+            <span class="legend-item"><span class="legend-color" style="background:#58a6ff;"></span>User</span>
+            <span class="legend-item"><span class="legend-color" style="background:#bc8cff;"></span>Sys</span>
+          </div>
+        </div>
+        <canvas id="cpu-chart" class="chart-canvas"></canvas>
+      </div>
+
+      <!-- Memory Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Memory Allocation History (MB)</div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#58a6ff;"></span>Used RAM</span>
+          </div>
+        </div>
+        <canvas id="mem-chart" class="chart-canvas"></canvas>
+      </div>
+
+      <!-- Disk Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Disk Throughput (KB/s)</div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#3fb950;"></span>Read</span>
+            <span class="legend-item"><span class="legend-color" style="background:#d29922;"></span>Write</span>
+          </div>
+        </div>
+        <canvas id="disk-chart" class="chart-canvas"></canvas>
+      </div>
+
+      <!-- Network Chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Network Traffic Rate (KB/s)</div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#3fb950;"></span>Rx (Ingress)</span>
+            <span class="legend-item"><span class="legend-color" style="background:#58a6ff;"></span>Tx (Egress)</span>
+          </div>
+        </div>
+        <canvas id="net-chart" class="chart-canvas"></canvas>
+      </div>
+    </section>
+
+    <!-- Structured Log Explorer -->
+    <section class="log-section">
+      <div class="chart-header" style="margin-bottom: 0.75rem;">
+        <div class="chart-title">Embedded SQLite Log Explorer</div>
+        <span style="font-size:0.75rem;color:var(--text-muted);">WAL Mode Active</span>
+      </div>
+
+      <div class="log-toolbar">
+        <input type="text" id="log-search" class="search-input" placeholder="Search message content...">
+        <select id="log-level" class="select-input">
+          <option value="">All Levels</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+          <option value="DEBUG">DEBUG</option>
+        </select>
+        <button class="btn" onclick="fetchLogs()" type="button">&#x21bb; Refresh</button>
+      </div>
+
+      <div class="log-table-wrapper">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th style="width: 100px;">Time</th>
+              <th style="width: 80px;">Level</th>
+              <th style="width: 140px;">Service</th>
+              <th>Message</th>
+              <th style="width: 200px;">Attributes</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody">
+            <tr>
+              <td colspan="5" style="text-align:center;color:#6e7681;padding:1.5rem;">Loading logs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Quick Ingest Test Form -->
+    <section class="form-section">
+      <div class="chart-header" style="margin-bottom: 0.75rem;">
+        <div class="chart-title">Quick Ingestion Test (`POST /api/v1/logs`)</div>
+      </div>
+      <form id="log-form">
+        <!-- Anti-spam Honeypot Field -->
+        <input type="text" id="hp_email" class="hp-field" name="website_hp" tabindex="-1" autocomplete="off">
+
+        <div class="form-grid">
+          <select id="form-level" class="select-input" required>
+            <option value="INFO">INFO</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+            <option value="DEBUG">DEBUG</option>
+          </select>
+
+          <input type="text" id="form-service" class="search-input" placeholder="Service (e.g. auth)" value="webapp" required>
+
+          <input type="text" id="form-message" class="search-input" placeholder="Type a test log message..." required>
+
+          <button type="submit" class="btn btn-primary">Ingest Log</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="footer">
+    <p>
+      <strong>Sugi</strong> &mdash; Pure Go Single-Binary Observability Engine.
+      Zero Runtime Dependencies. Zero API Cost.
+      Licensed under <a href="https://github.com/FahmiYoshikage/sugi/blob/master/LICENSE" target="_blank" rel="noopener">MIT</a>.
+    </p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
