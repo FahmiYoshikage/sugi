@@ -2,117 +2,103 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/FahmiYoshikage/sugi/internal/collector"
-	"github.com/FahmiYoshikage/sugi/internal/model"
-	"github.com/FahmiYoshikage/sugi/internal/storage"
+	"github.com/FahmiYoshikage/sugi/internal/server"
 )
 
+const version = "0.1.0"
+
 func main() {
-	fmt.Println("=== Sugi Observability Engine (Tahap 3 - Persistent Storage & WAL SQLite) ===")
-	fs := collector.NewDefaultProcFS()
+	portFlag := flag.Int("port", 8080, "HTTP server port")
+	dbFlag := flag.String("db", "sugi.db", "SQLite database file path")
+	retentionFlag := flag.String("retention", "7d", "Log retention period (e.g. 24h, 7d, 30d)")
+	intervalFlag := flag.Duration("interval", 1*time.Second, "System metric sampling interval")
+	versionFlag := flag.Bool("version", false, "Print version and exit")
 
-	cpuCol := collector.NewCPUCollector(fs)
-	memCol := collector.NewMemCollector(fs)
-	diskCol := collector.NewDiskCollector(fs)
-	netCol := collector.NewNetCollector(fs)
+	flag.Parse()
 
-	// In-memory ring buffer for 1 hour of time-series metrics
-	ringBuffer := storage.NewRingBuffer(storage.DefaultRingBufferCapacity)
+	if *versionFlag {
+		fmt.Printf("Sugi Observability Engine v%s\n", version)
+		os.Exit(0)
+	}
 
-	// Persistent embedded SQLite storage (Pure Go, WAL mode)
-	sqliteStorage, err := storage.NewSQLiteStorage("sugi.db")
+	retention := parseRetention(*retentionFlag)
+
+	cfg := server.Config{
+		Port:           *portFlag,
+		DBPath:         *dbFlag,
+		Retention:      retention,
+		SampleInterval: *intervalFlag,
+		Version:        version,
+	}
+
+	printBanner(cfg)
+
+	srv, err := server.NewServer(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize SQLite storage: %v", err)
+		log.Fatalf("[FATAL] Failed to initialize Sugi server: %v", err)
 	}
-	defer sqliteStorage.Close()
 
-	// Async batch log writer with bounded channel
-	writerCfg := storage.DefaultAsyncLogWriterConfig()
-	writerCfg.FlushInterval = 200 * time.Millisecond
-	logWriter := storage.NewAsyncLogWriter(sqliteStorage, writerCfg)
+	// Trap termination signals for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Baseline snapshot
-	_, _ = cpuCol.Collect()
-	_, _ = diskCol.Collect()
-	_, _ = netCol.Collect()
+	go func() {
+		if err := srv.Start(); err != nil {
+			log.Fatalf("[FATAL] Server exited with error: %v", err)
+		}
+	}()
 
-	fmt.Println("Sampling system metrics (waiting 1 second for rate deltas)...")
-	time.Sleep(1 * time.Second)
+	sig := <-sigChan
+	log.Printf("[Sugi] Received shutdown signal (%s)", sig)
 
-	cpuStats, _ := cpuCol.Collect()
-	memStats, _ := memCol.Collect()
-	diskStats, _ := diskCol.Collect()
-	netStats, _ := netCol.Collect()
-
-	snapshot := model.SystemSnapshot{
-		Timestamp: time.Now().UTC(),
-		CPU:       cpuStats,
-		Memory:    memStats,
-		Disk:      diskStats,
-		Network:   netStats,
-	}
-	ringBuffer.Push(snapshot)
-
-	// Enqueue demonstration structured logs
-	now := time.Now().UTC()
-	logWriter.Enqueue(model.LogEntry{
-		Timestamp:  now,
-		Level:      "INFO",
-		Service:    "sugi-core",
-		Message:    "Sugi engine started successfully in single-binary mode",
-		Attributes: map[string]string{"version": "v0.1.0", "storage": "sqlite-wal"},
-	})
-	logWriter.Enqueue(model.LogEntry{
-		Timestamp:  now.Add(50 * time.Millisecond),
-		Level:      "INFO",
-		Service:    "collector",
-		Message:    fmt.Sprintf("Procfs sampled: CPU %.2f%%, RAM %.2f%%, Active Cores: %d", cpuStats.TotalUsage, memStats.UsedPercent, len(cpuStats.Cores)),
-		Attributes: map[string]string{"type": "procfs"},
-	})
-	logWriter.Enqueue(model.LogEntry{
-		Timestamp:  now.Add(100 * time.Millisecond),
-		Level:      "WARN",
-		Service:    "net-monitor",
-		Message:    fmt.Sprintf("Network interface monitored: %d active interfaces", len(netStats.Interfaces)),
-		Attributes: map[string]string{"rx_kb": fmt.Sprintf("%.2f", netStats.TotalRxBytesPerSec/1024.0)},
-	})
-
-	// Flush async writer
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_ = logWriter.Close(ctx)
 
-	// Query stored logs from SQLite
-	totalLogs, err := sqliteStorage.CountLogs()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("[ERROR] Graceful shutdown error: %v", err)
+	}
+}
+
+func parseRetention(s string) time.Duration {
+	if s == "" {
+		return 7 * 24 * time.Hour
+	}
+	// Support "Xd" for days
+	if len(s) > 1 && s[len(s)-1] == 'd' {
+		var days int
+		if _, err := fmt.Sscanf(s, "%dd", &days); err == nil && days > 0 {
+			return time.Duration(days) * 24 * time.Hour
+		}
+	}
+	d, err := time.ParseDuration(s)
 	if err != nil {
-		log.Fatalf("Count logs error: %v", err)
+		log.Printf("[WARN] Invalid retention %q, defaulting to 7 days", s)
+		return 7 * 24 * time.Hour
 	}
+	return d
+}
 
-	recentLogs, err := sqliteStorage.QueryLogs(model.LogFilter{Limit: 3})
-	if err != nil {
-		log.Fatalf("Query logs error: %v", err)
-	}
-
-	latest, _ := ringBuffer.GetLatest()
-
-	fmt.Printf("\n[Metrics Summary]\n")
-	fmt.Printf("CPU Usage    : %.2f%% (%d cores)\n", latest.CPU.TotalUsage, len(latest.CPU.Cores))
-	fmt.Printf("RAM Used     : %d MB (%.2f%% of %d MB)\n", latest.Memory.UsedBytes/(1024*1024), latest.Memory.UsedPercent, latest.Memory.TotalBytes/(1024*1024))
-	fmt.Printf("Disk I/O     : Read %.2f KB/s | Write %.2f KB/s\n", latest.Disk.TotalReadBytesPerSec/1024.0, latest.Disk.TotalWriteBytesPerSec/1024.0)
-	fmt.Printf("Network I/O  : Ingress %.2f KB/s | Egress %.2f KB/s\n", latest.Network.TotalRxBytesPerSec/1024.0, latest.Network.TotalTxBytesPerSec/1024.0)
-	fmt.Printf("RingBuffer   : %d / %d points stored\n", ringBuffer.Size(), ringBuffer.Capacity())
-
-	fmt.Printf("\n[Persistent Storage: SQLite (WAL Mode)]\n")
-	fmt.Printf("Total Logs Persisted: %d records\n", totalLogs)
-	fmt.Println("Recent Logs:")
-	for _, l := range recentLogs {
-		fmt.Printf("  [%s] %-5s (%-12s): %s | Attrs: %v\n",
-			l.Timestamp.Format("15:04:05.000"), l.Level, l.Service, l.Message, l.Attributes)
-	}
-
-	fmt.Println("\nTahap 3 verification successful.")
+func printBanner(cfg server.Config) {
+	banner := `
+  ____             _ 
+ / ___| _   _  __ _(_)
+ \___ \| | | |/ _` + "`" + ` | |
+  ___) | |_| | (_| | |
+ |____/ \__,_|\__, |_|
+              |___/   v` + cfg.Version + `
+`
+	fmt.Println(banner)
+	fmt.Println("  Zero-dependency, Ultra-lightweight Observability Engine")
+	fmt.Printf("  -> HTTP Port       : :%d\n", cfg.Port)
+	fmt.Printf("  -> SQLite Database : %s (WAL Mode)\n", cfg.DBPath)
+	fmt.Printf("  -> Log Retention   : %s\n", cfg.Retention)
+	fmt.Printf("  -> Sampling Rate   : %s\n\n", cfg.SampleInterval)
 }
