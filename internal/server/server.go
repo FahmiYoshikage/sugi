@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/FahmiYoshikage/sugi/internal/api"
@@ -20,6 +21,8 @@ type Config struct {
 	DBPath         string
 	Retention      time.Duration
 	SampleInterval time.Duration
+	BackupInterval time.Duration
+	BackupDir      string
 	Version        string
 }
 
@@ -136,6 +139,11 @@ func NewServer(cfg Config) (*Server, error) {
 func (s *Server) Start() error {
 	go s.metricSamplingLoop()
 
+	if s.cfg.BackupInterval > 0 {
+		go s.backupLoop()
+		log.Printf("[Sugi] Scheduled backup active: every %s to %s", s.cfg.BackupInterval, s.cfg.BackupDir)
+	}
+
 	log.Printf("[Sugi] HTTP server listening on port %d...", s.cfg.Port)
 	log.Printf("[Sugi] Logs database: %s (retention: %s)", s.cfg.DBPath, s.cfg.Retention)
 	log.Printf("[Sugi] Metric sampling rate: %s", s.cfg.SampleInterval)
@@ -176,6 +184,27 @@ func (s *Server) metricSamplingLoop() {
 			s.ringBuffer.Push(snapshot)
 			s.apiHandler.SSEHub().BroadcastSnapshot(snapshot)
 
+		case <-s.stopChan:
+			return
+		}
+	}
+}
+
+// backupLoop periodically creates a snapshot backup of the SQLite database.
+func (s *Server) backupLoop() {
+	ticker := time.NewTicker(s.cfg.BackupInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			timestamp := time.Now().UTC().Format("2006-01-02T15-04-05")
+			backupFile := filepath.Join(s.cfg.BackupDir, fmt.Sprintf("sugi-backup-%s.db", timestamp))
+			if err := s.sqlite.Backup(backupFile); err != nil {
+				log.Printf("[Sugi] Error taking scheduled backup: %v", err)
+			} else {
+				log.Printf("[Sugi] Scheduled backup created: %s", backupFile)
+			}
 		case <-s.stopChan:
 			return
 		}
