@@ -24,9 +24,10 @@ Sugi adalah server metrik dan agregasi log mandiri (*standalone*) berbasis Go mu
   - Pembacaan & parsing native `/proc/stat` (CPU delta total, breakdown, dan per-core)
   - Pembacaan & parsing native `/proc/meminfo` (RAM presisi dan legacy fallback)
   - Unit tests & benchmarks dengan mock fixtures
-- [ ] **Tahap 2: I/O Collectors & Time Series In-Memory Storage**
-  - Parsing `/proc/diskstats` dan `/proc/net/dev`
-  - In-memory circular ring buffer (1 jam metrik time-series)
+- [x] **Tahap 2: I/O Collectors & Time Series In-Memory Storage**
+  - Parsing `/proc/diskstats` (throughputs KB/s, IOPS, device metrics)
+  - Parsing `/proc/net/dev` (Ingress/Egress KB/s, packet rates, interfaces)
+  - In-memory circular ring buffer (1 jam metrik time-series, zero-allocation write path: 37ns/op, 0 B/op)
 - [ ] **Tahap 3: Persistent Storage & Retention Engine**
   - Pure-Go SQLite engine (`modernc.org/sqlite`) dengan WAL mode
   - Batch log writer & auto-pruning background worker
