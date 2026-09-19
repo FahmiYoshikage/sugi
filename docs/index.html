@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sugi - Zero-Dependency Ultra-Lightweight Observability Engine</title>
+  <meta name="description" content="A zero-dependency, ultra-lightweight single-binary observability engine in pure Go. Monitor CPU, Memory, Disk, and Network with embedded dark-mode dashboard and SQLite WAL logs.">
+  <meta name="keywords" content="observability, monitoring, linux, metrics, logs, sqlite, single-binary, pure-go, sse">
+  <link rel="canonical" href="https://fahmiyoshikage.github.io/sugi/">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fahmiyoshikage.github.io/sugi/">
+  <meta property="og:title" content="Sugi - Ultra-Lightweight Observability Engine">
+  <meta property="og:description" content="Single-binary metrics & logs aggregator with embedded real-time dark-mode dashboard in pure Go.">
+  <meta property="og:image" content="https://fahmiyoshikage.github.io/sugi/favicon.svg">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Sugi",
+        "operatingSystem": "Linux",
+        "applicationCategory": "DeveloperApplication",
+        "license": "https://opensource.org/licenses/MIT",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Zero-dependency, ultra-lightweight single-binary observability engine with embedded dark-mode dashboard."
+      },
+      {
+        "@type": "Organization",
+        "name": "Sugi Project",
+        "url": "https://github.com/FahmiYoshikage/sugi"
+      }
+    ]
+  }
+  </script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="nav">
+    <a href="#" class="nav-brand">
+      <svg width="28" height="28" viewBox="0 0 64 64" fill="none">
+        <rect width="64" height="64" rx="14" fill="#161b22"/>
+        <rect x="1" y="1" width="62" height="62" rx="13" stroke="#30363d" stroke-width="2"/>
+        <path d="M12 36 L22 36 L27 18 L34 46 L40 28 L44 36 L52 36" stroke="#3fb950" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="34" cy="46" r="3" fill="#58a6ff"/>
+        <circle cx="27" cy="18" r="3" fill="#58a6ff"/>
+      </svg>
+      <span>SUGI</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#compare">Comparison</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/FahmiYoshikage/sugi" target="_blank" rel="noopener" class="btn btn-primary">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        <span>Star on GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero">
+      <div class="hero-pill">
+        <span>⚡ Production Ready v0.1.0 &bull; Open Source MIT</span>
+      </div>
+      <h1>Ultra-Lightweight Linux Observability Engine</h1>
+      <p>
+        Monitor CPU, Memory, Disk, and Network with an embedded dark-mode dashboard and SQLite log aggregator.
+        Compiled into a single 15MB binary. <strong>No Node.js. No Docker runtime. No external database.</strong>
+      </p>
+
+      <div class="hero-actions">
+        <a href="https://github.com/FahmiYoshikage/sugi/releases" class="btn btn-primary" style="padding:0.75rem 1.5rem;font-size:1rem;">Download Binary</a>
+        <a href="https://github.com/FahmiYoshikage/sugi#readme" class="btn" style="padding:0.75rem 1.5rem;font-size:1rem;">Documentation &rarr;</a>
+      </div>
+
+      <!-- Terminal Box -->
+      <div id="install" class="terminal-box">
+        <div class="terminal-header">
+          <span class="t-dot t-red"></span>
+          <span class="t-dot t-yellow"></span>
+          <span class="t-dot t-green"></span>
+        </div>
+        <div class="terminal-body">
+          <code class="terminal-cmd">curl -fsSL https://raw.githubusercontent.com/FahmiYoshikage/sugi/master/install.sh | sh</code>
+          <button id="copy-btn" class="copy-btn" onclick="copyInstallCmd()">Copy</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Key Features -->
+    <section id="features" class="section">
+      <div class="section-title">
+        <h2>Engineering Excellence</h2>
+        <p>Built from scratch with systems programming principles in pure Go.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Single Binary Deployment</h3>
+          <p>The backend collector, pure-Go SQLite storage, and visual web dashboard compile together into <code>./sugi</code>. Just run it.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Ultra-Low Resource Footprint</h3>
+          <p>Consumes under <strong>16 MB RAM</strong> and <strong>0.3% CPU</strong> during continuous operation. Perfect for VPS, edge nodes, and IoT.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🐧</div>
+          <h3>Native Linux /proc Metrics</h3>
+          <p>Parses <code>/proc/stat</code>, <code>/proc/meminfo</code>, <code>/proc/diskstats</code>, and <code>/proc/net/dev</code> directly with zero overhead.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📡</div>
+          <h3>Real-Time SSE Streaming</h3>
+          <p>Broadcasts live system metrics every second directly to browser dashboards via Server-Sent Events (<code>/api/v1/stream</code>).</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Zero-NPM Canvas Charts</h3>
+          <p>Embedded dark-theme dashboard powered by a custom canvas charting engine. 100% offline, zero npm, zero external CDN.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3>SQLite WAL & Online Backup</h3>
+          <p>High-throughput log persistence in WAL mode (> 145k logs/sec) with automated retention pruning and zero-downtime backups.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison Matrix -->
+    <section id="compare" class="section">
+      <div class="section-title">
+        <h2>How Sugi Compares</h2>
+        <p>Radically simpler. Dramatically lighter.</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Feature / Metric</th>
+              <th class="highlight-col">Sugi</th>
+              <th>Prometheus + Grafana</th>
+              <th>Netdata</th>
+              <th>Datadog / SaaS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Idle RAM Footprint</strong></td>
+              <td class="highlight-col"><strong>~16 MB</strong></td>
+              <td>500 MB - 1.5 GB</td>
+              <td>120 MB - 300 MB</td>
+              <td>150 MB - 350 MB</td>
+            </tr>
+            <tr>
+              <td><strong>Architecture</strong></td>
+              <td class="highlight-col">Single Executable</td>
+              <td>Multi-container setup</td>
+              <td>Daemon + Modules</td>
+              <td>Agent + Cloud SaaS</td>
+            </tr>
+            <tr>
+              <td><strong>Log Storage</strong></td>
+              <td class="highlight-col">Embedded SQLite (WAL)</td>
+              <td>Requires Loki / ELK</td>
+              <td>Proprietary DB</td>
+              <td>Cloud Storage ($$$)</td>
+            </tr>
+            <tr>
+              <td><strong>External Dependencies</strong></td>
+              <td class="highlight-col"><strong>0 (Zero)</strong></td>
+              <td>Docker / Node / Java</td>
+              <td>Node.js / Python / C</td>
+              <td>Proprietary agent</td>
+            </tr>
+            <tr>
+              <td><strong>License & Cost</strong></td>
+              <td class="highlight-col"><strong>100% Free (MIT)</strong></td>
+              <td>Free (High host RAM)</td>
+              <td>Freemium</td>
+              <td>Paid per host/GB</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="https://github.com/FahmiYoshikage/sugi" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/FahmiYoshikage/sugi/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/FahmiYoshikage/sugi/issues" target="_blank" rel="noopener">Issues</a>
+      <a href="https://github.com/FahmiYoshikage/sugi/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+    <p class="footer-bottom">
+      &copy; 2026 Sugi Observability Engine by <a href="https://github.com/FahmiYoshikage" style="color:var(--accent-blue);">FahmiYoshikage</a>. Built with pure Go.
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
