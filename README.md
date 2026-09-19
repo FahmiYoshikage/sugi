@@ -28,9 +28,10 @@ Sugi adalah server metrik dan agregasi log mandiri (*standalone*) berbasis Go mu
   - Parsing `/proc/diskstats` (throughputs KB/s, IOPS, device metrics)
   - Parsing `/proc/net/dev` (Ingress/Egress KB/s, packet rates, interfaces)
   - In-memory circular ring buffer (1 jam metrik time-series, zero-allocation write path: 37ns/op, 0 B/op)
-- [ ] **Tahap 3: Persistent Storage & Retention Engine**
-  - Pure-Go SQLite engine (`modernc.org/sqlite`) dengan WAL mode
-  - Batch log writer & auto-pruning background worker
+- [x] **Tahap 3: Persistent Storage & Retention Engine**
+  - Pure-Go SQLite engine (`modernc.org/sqlite`) dengan mode WAL aktif (`PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;`)
+  - Asynchronous batch log writer (`AsyncLogWriter`) dengan bounded channel & zero-blocking
+  - Background ticker untuk automatic retention pruning (misal penghapusan log > 7 hari)
 - [ ] **Tahap 4: Ingestion Pipeline & Core Orchestration**
   - `POST /api/v1/logs` dengan bounded channel buffer & backpressure policy
   - Graceful shutdown & CLI configuration flags

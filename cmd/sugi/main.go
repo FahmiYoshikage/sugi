@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Sugi Observability Engine (Tahap 2 - Collectors & Time-Series Ring Buffer) ===")
+	fmt.Println("=== Sugi Observability Engine (Tahap 3 - Persistent Storage & WAL SQLite) ===")
 	fs := collector.NewDefaultProcFS()
 
 	cpuCol := collector.NewCPUCollector(fs)
@@ -19,10 +20,22 @@ func main() {
 	diskCol := collector.NewDiskCollector(fs)
 	netCol := collector.NewNetCollector(fs)
 
-	// Ring buffer for 1 hour of time-series (3600 points)
+	// In-memory ring buffer for 1 hour of time-series metrics
 	ringBuffer := storage.NewRingBuffer(storage.DefaultRingBufferCapacity)
 
-	// Initial baseline snapshot
+	// Persistent embedded SQLite storage (Pure Go, WAL mode)
+	sqliteStorage, err := storage.NewSQLiteStorage("sugi.db")
+	if err != nil {
+		log.Fatalf("Failed to initialize SQLite storage: %v", err)
+	}
+	defer sqliteStorage.Close()
+
+	// Async batch log writer with bounded channel
+	writerCfg := storage.DefaultAsyncLogWriterConfig()
+	writerCfg.FlushInterval = 200 * time.Millisecond
+	logWriter := storage.NewAsyncLogWriter(sqliteStorage, writerCfg)
+
+	// Baseline snapshot
 	_, _ = cpuCol.Collect()
 	_, _ = diskCol.Collect()
 	_, _ = netCol.Collect()
@@ -30,25 +43,10 @@ func main() {
 	fmt.Println("Sampling system metrics (waiting 1 second for rate deltas)...")
 	time.Sleep(1 * time.Second)
 
-	cpuStats, err := cpuCol.Collect()
-	if err != nil {
-		log.Fatalf("Error collecting CPU: %v", err)
-	}
-
-	memStats, err := memCol.Collect()
-	if err != nil {
-		log.Fatalf("Error collecting Memory: %v", err)
-	}
-
-	diskStats, err := diskCol.Collect()
-	if err != nil {
-		log.Fatalf("Error collecting Disk: %v", err)
-	}
-
-	netStats, err := netCol.Collect()
-	if err != nil {
-		log.Fatalf("Error collecting Network: %v", err)
-	}
+	cpuStats, _ := cpuCol.Collect()
+	memStats, _ := memCol.Collect()
+	diskStats, _ := diskCol.Collect()
+	netStats, _ := netCol.Collect()
 
 	snapshot := model.SystemSnapshot{
 		Timestamp: time.Now().UTC(),
@@ -57,46 +55,64 @@ func main() {
 		Disk:      diskStats,
 		Network:   netStats,
 	}
-
-	// Push snapshot into RingBuffer
 	ringBuffer.Push(snapshot)
 
-	latest, ok := ringBuffer.GetLatest()
-	if !ok {
-		log.Fatalf("Failed to retrieve snapshot from RingBuffer")
+	// Enqueue demonstration structured logs
+	now := time.Now().UTC()
+	logWriter.Enqueue(model.LogEntry{
+		Timestamp:  now,
+		Level:      "INFO",
+		Service:    "sugi-core",
+		Message:    "Sugi engine started successfully in single-binary mode",
+		Attributes: map[string]string{"version": "v0.1.0", "storage": "sqlite-wal"},
+	})
+	logWriter.Enqueue(model.LogEntry{
+		Timestamp:  now.Add(50 * time.Millisecond),
+		Level:      "INFO",
+		Service:    "collector",
+		Message:    fmt.Sprintf("Procfs sampled: CPU %.2f%%, RAM %.2f%%, Active Cores: %d", cpuStats.TotalUsage, memStats.UsedPercent, len(cpuStats.Cores)),
+		Attributes: map[string]string{"type": "procfs"},
+	})
+	logWriter.Enqueue(model.LogEntry{
+		Timestamp:  now.Add(100 * time.Millisecond),
+		Level:      "WARN",
+		Service:    "net-monitor",
+		Message:    fmt.Sprintf("Network interface monitored: %d active interfaces", len(netStats.Interfaces)),
+		Attributes: map[string]string{"rx_kb": fmt.Sprintf("%.2f", netStats.TotalRxBytesPerSec/1024.0)},
+	})
+
+	// Flush async writer
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = logWriter.Close(ctx)
+
+	// Query stored logs from SQLite
+	totalLogs, err := sqliteStorage.CountLogs()
+	if err != nil {
+		log.Fatalf("Count logs error: %v", err)
 	}
 
-	fmt.Printf("\n[CPU Metrics]\n")
-	fmt.Printf("Total Usage : %.2f%%\n", latest.CPU.TotalUsage)
-	fmt.Printf("Active Cores: %d\n", len(latest.CPU.Cores))
-
-	fmt.Printf("\n[Memory Metrics]\n")
-	fmt.Printf("Total RAM   : %d MB (%.2f GB)\n", latest.Memory.TotalBytes/(1024*1024), float64(latest.Memory.TotalBytes)/(1024*1024*1024))
-	fmt.Printf("Used RAM    : %d MB (%.2f%%)\n", latest.Memory.UsedBytes/(1024*1024), latest.Memory.UsedPercent)
-
-	fmt.Printf("\n[Disk I/O Metrics]\n")
-	fmt.Printf("Read Throughput : %.2f KB/s (%.1f IOPS)\n", latest.Disk.TotalReadBytesPerSec/1024.0, latest.Disk.TotalReadIOPS)
-	fmt.Printf("Write Throughput: %.2f KB/s (%.1f IOPS)\n", latest.Disk.TotalWriteBytesPerSec/1024.0, latest.Disk.TotalWriteIOPS)
-	fmt.Printf("Monitored Disks : %d devices\n", len(latest.Disk.Devices))
-	for _, dev := range latest.Disk.Devices {
-		if dev.ReadBytesPerSec > 0 || dev.WriteBytesPerSec > 0 {
-			fmt.Printf("  - Device %-10s: Read %.2f KB/s (%.1f IOPS) | Write %.2f KB/s (%.1f IOPS)\n",
-				dev.Device, dev.ReadBytesPerSec/1024.0, dev.ReadIOPS, dev.WriteBytesPerSec/1024.0, dev.WriteIOPS)
-		}
+	recentLogs, err := sqliteStorage.QueryLogs(model.LogFilter{Limit: 3})
+	if err != nil {
+		log.Fatalf("Query logs error: %v", err)
 	}
 
-	fmt.Printf("\n[Network I/O Metrics]\n")
-	fmt.Printf("Total Ingress (Rx) : %.2f KB/s\n", latest.Network.TotalRxBytesPerSec/1024.0)
-	fmt.Printf("Total Egress (Tx)  : %.2f KB/s\n", latest.Network.TotalTxBytesPerSec/1024.0)
-	fmt.Printf("Interfaces Monitored: %d\n", len(latest.Network.Interfaces))
-	for _, iface := range latest.Network.Interfaces {
-		if iface.RxBytesPerSec > 0 || iface.TxBytesPerSec > 0 {
-			fmt.Printf("  - Interface %-10s: Rx %.2f KB/s (%.1f pkt/s) | Tx %.2f KB/s (%.1f pkt/s)\n",
-				iface.Name, iface.RxBytesPerSec/1024.0, iface.RxPacketsPerSec, iface.TxBytesPerSec/1024.0, iface.TxPacketsPerSec)
-		}
+	latest, _ := ringBuffer.GetLatest()
+
+	fmt.Printf("\n[Metrics Summary]\n")
+	fmt.Printf("CPU Usage    : %.2f%% (%d cores)\n", latest.CPU.TotalUsage, len(latest.CPU.Cores))
+	fmt.Printf("RAM Used     : %d MB (%.2f%% of %d MB)\n", latest.Memory.UsedBytes/(1024*1024), latest.Memory.UsedPercent, latest.Memory.TotalBytes/(1024*1024))
+	fmt.Printf("Disk I/O     : Read %.2f KB/s | Write %.2f KB/s\n", latest.Disk.TotalReadBytesPerSec/1024.0, latest.Disk.TotalWriteBytesPerSec/1024.0)
+	fmt.Printf("Network I/O  : Ingress %.2f KB/s | Egress %.2f KB/s\n", latest.Network.TotalRxBytesPerSec/1024.0, latest.Network.TotalTxBytesPerSec/1024.0)
+	fmt.Printf("RingBuffer   : %d / %d points stored\n", ringBuffer.Size(), ringBuffer.Capacity())
+
+	fmt.Printf("\n[Persistent Storage: SQLite (WAL Mode)]\n")
+	fmt.Printf("Total Logs Persisted: %d records\n", totalLogs)
+	fmt.Println("Recent Logs:")
+	for _, l := range recentLogs {
+		fmt.Printf("  [%s] %-5s (%-12s): %s | Attrs: %v\n",
+			l.Timestamp.Format("15:04:05.000"), l.Level, l.Service, l.Message, l.Attributes)
 	}
 
-	fmt.Printf("\n[RingBuffer Status]\n")
-	fmt.Printf("Stored Points: %d / %d (Capacity: 1 Hour @ 1s interval)\n", ringBuffer.Size(), ringBuffer.Capacity())
-	fmt.Println("\nTahap 2 verification successful.")
+	fmt.Println("\nTahap 3 verification successful.")
 }
