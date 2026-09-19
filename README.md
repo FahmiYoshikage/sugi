@@ -39,9 +39,12 @@ Sugi adalah server metrik dan agregasi log mandiri (*standalone*) berbasis Go mu
   - CLI flags & environment configuration (`-port`, `-db`, `-retention`, `-interval`)
   - Server orchestrator dengan graceful shutdown (`SIGINT`, `SIGTERM`)
   - Terverifikasi efisiensi resource: **RAM ~16.7 MB** (target < 30 MB) & **CPU ~0.3%** (target < 1%)
-- [ ] **Tahap 5: Real-Time SSE Broadcaster & Embedded Web UI**
-  - Endpoint `GET /api/v1/stream`
-  - Dark-mode responsive dashboard via `//go:embed`
+- [x] **Tahap 5: Real-Time SSE Broadcaster & Embedded Web UI**
+  - Endpoint Server-Sent Events `GET /api/v1/stream` untuk streaming metrik 1-detik ke browser
+  - Web dashboard dark-mode responsif disatukan ke biner executable melalui `//go:embed`
+  - Engine charting canvas murni ultra-ringan (~200 baris vanilla JS, zero npm, zero CDN eksternal)
+  - Log explorer interaktif dan form uji coba ingesti log dengan proteksi honeypot anti-spam
+  - Halaman Custom 404 dan favicon SVG
 - [ ] **Tahap 6: Hardening, Benchmarking & Release**
   - Profiling pprof RAM & CPU
   - Multi-arch cross-compilation release (Linux AMD64/ARM64)

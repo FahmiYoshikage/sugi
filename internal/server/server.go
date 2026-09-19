@@ -11,6 +11,7 @@ import (
 	"github.com/FahmiYoshikage/sugi/internal/collector"
 	"github.com/FahmiYoshikage/sugi/internal/model"
 	"github.com/FahmiYoshikage/sugi/internal/storage"
+	"github.com/FahmiYoshikage/sugi/internal/ui"
 )
 
 // Config configures the Sugi server orchestrator.
@@ -95,9 +96,11 @@ func NewServer(cfg Config) (*Server, error) {
 	_, _ = netCol.Collect()
 
 	// 5. HTTP API Handler & Routing
-	apiHandler := api.NewAPIHandler(ringBuffer, sqlite, logWriter, cfg.Version)
+	sseHub := api.NewSSEHub()
+	apiHandler := api.NewAPIHandler(ringBuffer, sqlite, logWriter, sseHub, cfg.Version)
 	mux := http.NewServeMux()
 	apiHandler.RegisterRoutes(mux)
+	mux.Handle("/", ui.Handler())
 
 	wrappedMux := api.Chain(
 		mux,
@@ -171,6 +174,7 @@ func (s *Server) metricSamplingLoop() {
 				Network:   netStats,
 			}
 			s.ringBuffer.Push(snapshot)
+			s.apiHandler.SSEHub().BroadcastSnapshot(snapshot)
 
 		case <-s.stopChan:
 			return
@@ -182,6 +186,9 @@ func (s *Server) metricSamplingLoop() {
 func (s *Server) Shutdown(ctx context.Context) error {
 	log.Println("[Sugi] Initiating graceful shutdown...")
 	close(s.stopChan)
+
+	// Close SSE connections
+	s.apiHandler.SSEHub().Close()
 
 	// Shutdown HTTP listener first to stop incoming requests
 	if err := s.httpServer.Shutdown(ctx); err != nil {
