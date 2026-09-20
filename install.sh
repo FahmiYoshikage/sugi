@@ -31,16 +31,25 @@ DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}
 echo "Detected Linux (${TARGET_ARCH})."
 echo "Downloading Sugi binary from GitHub Releases..."
 
+# Use temporary file to prevent ETXTBSY if an existing sugi process is currently running
+TMP_BIN="./sugi.tmp.$$"
+trap 'rm -f "$TMP_BIN"' EXIT INT TERM
+
 if command -v curl >/dev/null 2>&1; then
-  curl -fsSL -o sugi "$DOWNLOAD_URL"
+  curl -fL --progress-bar -o "$TMP_BIN" "$DOWNLOAD_URL"
 elif command -v wget >/dev/null 2>&1; then
-  wget -q -O sugi "$DOWNLOAD_URL"
+  wget --show-progress -O "$TMP_BIN" "$DOWNLOAD_URL"
 else
   echo "Error: curl or wget is required to download Sugi."
   exit 1
 fi
 
-chmod +x sugi
+chmod +x "$TMP_BIN"
+# Atomically replace target binary using rename
+mv -f "$TMP_BIN" sugi
+trap - EXIT INT TERM
+
+echo ""
 echo "Successfully installed './sugi'!"
 echo ""
 echo "To start Sugi:"
