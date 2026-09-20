@@ -7,6 +7,7 @@
   <meta name="description" content="A zero-dependency, ultra-lightweight single-binary observability engine in pure Go. Monitor CPU, Memory, Disk, and Network with embedded dark-mode dashboard and SQLite WAL logs.">
   <meta name="keywords" content="observability, monitoring, linux, metrics, logs, sqlite, single-binary, pure-go, sse">
   <link rel="canonical" href="https://fahmiyoshikage.github.io/sugi/">
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- Open Graph / Social -->
@@ -14,7 +15,11 @@
   <meta property="og:url" content="https://fahmiyoshikage.github.io/sugi/">
   <meta property="og:title" content="Sugi - Ultra-Lightweight Observability Engine">
   <meta property="og:description" content="Single-binary metrics & logs aggregator with embedded real-time dark-mode dashboard in pure Go.">
-  <meta property="og:image" content="https://fahmiyoshikage.github.io/sugi/favicon.svg">
+  <meta property="og:image" content="https://fahmiyoshikage.github.io/sugi/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sugi - Ultra-Lightweight Observability Engine">
+  <meta name="twitter:description" content="Single-binary metrics & logs aggregator with embedded real-time dark-mode dashboard in pure Go.">
+  <meta name="twitter:image" content="https://fahmiyoshikage.github.io/sugi/logo.png">
 
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
@@ -46,13 +51,7 @@
   <!-- Top Navigation -->
   <header class="nav">
     <a href="#" class="nav-brand">
-      <svg width="28" height="28" viewBox="0 0 64 64" fill="none">
-        <rect width="64" height="64" rx="14" fill="#161b22"/>
-        <rect x="1" y="1" width="62" height="62" rx="13" stroke="#30363d" stroke-width="2"/>
-        <path d="M12 36 L22 36 L27 18 L34 46 L40 28 L44 36 L52 36" stroke="#3fb950" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="34" cy="46" r="3" fill="#58a6ff"/>
-        <circle cx="27" cy="18" r="3" fill="#58a6ff"/>
-      </svg>
+      <img src="logo-sm.png" alt="Sugi Logo" class="brand-logo" width="32" height="32">
       <span>SUGI</span>
     </a>
     <div class="nav-links">
@@ -71,6 +70,11 @@
   <!-- Hero Section -->
   <main>
     <section class="hero">
+      <div class="hero-brand-badge">
+        <div class="hero-logo-glow"></div>
+        <img src="logo.png" alt="Sugi Observability Engine Mascot Logo" class="hero-mascot">
+      </div>
+
       <div class="hero-pill">
         <span>⚡ Production Ready v0.1.0 &bull; Open Source MIT</span>
       </div>
@@ -85,16 +89,52 @@
         <a href="https://github.com/FahmiYoshikage/sugi#readme" class="btn" style="padding:0.75rem 1.5rem;font-size:1rem;">Documentation &rarr;</a>
       </div>
 
-      <!-- Terminal Box -->
-      <div id="install" class="terminal-box">
-        <div class="terminal-header">
-          <span class="t-dot t-red"></span>
-          <span class="t-dot t-yellow"></span>
-          <span class="t-dot t-green"></span>
+      <!-- Interactive Terminal Installer Box -->
+      <div id="install" class="terminal-container">
+        <div class="terminal-tabs">
+          <button class="t-tab active" data-tab="curl" onclick="setInstallTab('curl')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+            <span>curl (One-Liner)</span>
+          </button>
+          <button class="t-tab" data-tab="go" onclick="setInstallTab('go')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M1.986 11.215a4.015 4.015 0 0 1 1.706-2.908c1.378-.962 3.167-1.07 4.542-.31l-.813 1.408c-.851-.482-1.928-.42-2.753.155a2.38 2.38 0 0 0-1.011 1.737c-.126.966.388 1.897 1.258 2.274.87.377 1.895.148 2.508-.557v-.714H5.21v-1.632h3.818v2.793a3.916 3.916 0 0 1-3.69 2.222 4.032 4.032 0 0 1-3.352-4.468z"/></svg>
+            <span>go install</span>
+          </button>
+          <button class="t-tab" data-tab="binary" onclick="setInstallTab('binary')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Manual Binary</span>
+          </button>
         </div>
-        <div class="terminal-body">
-          <code class="terminal-cmd">curl -fsSL https://raw.githubusercontent.com/FahmiYoshikage/sugi/master/install.sh | sh</code>
-          <button id="copy-btn" class="copy-btn" onclick="copyInstallCmd()">Copy</button>
+        <div class="terminal-box">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="t-dot t-red"></span>
+              <span class="t-dot t-yellow"></span>
+              <span class="t-dot t-green"></span>
+            </div>
+            <span class="terminal-title">bash &mdash; sugi installer</span>
+            <div class="terminal-spacer"></div>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-cmd-wrapper">
+              <span class="t-prompt">$</span>
+              <code id="terminal-content" class="terminal-cmd"><span class="hl-bin">curl</span> <span class="hl-flag">-fsSL</span> <span class="hl-url">https://raw.githubusercontent.com/FahmiYoshikage/sugi/master/install.sh</span> <span class="hl-op">|</span> <span class="hl-bin">sh</span></code>
+            </div>
+            <button id="copy-btn" class="copy-btn" onclick="copyCurrentCmd()" title="Copy command">
+              <svg id="copy-icon" class="copy-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span id="copy-text">Copy</span>
+            </button>
+          </div>
+        </div>
+        <div class="terminal-subtext">
+          <span>⚡ Auto-detects Linux (x86_64 &amp; arm64)</span>
+          <span>&bull;</span>
+          <span>Zero dependencies</span>
+          <span>&bull;</span>
+          <span>Installs to <code>/usr/local/bin/sugi</code></span>
         </div>
       </div>
     </section>

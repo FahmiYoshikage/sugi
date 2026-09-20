@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Sugi Observability Engine Logo" width="160" style="border-radius: 24px;">
+</p>
+
 # Sugi 🌲
 
 <p align="center">
@@ -71,7 +75,22 @@
 
 ## 🚀 Quickstart
 
-### 1. Run from Source
+### Method A: One-Line Installer (Recommended)
+Installs the latest pre-compiled binary for your architecture (`amd64` or `arm64`) to `/usr/local/bin/sugi`:
+```bash
+curl -fsSL https://raw.githubusercontent.com/FahmiYoshikage/sugi/master/install.sh | sh
+```
+Then start Sugi with a single command:
+```bash
+sugi
+```
+
+### Method B: Via Go Toolchain
+```bash
+go install github.com/FahmiYoshikage/sugi/cmd/sugi@latest
+```
+
+### Method C: Run from Source
 ```bash
 git clone https://github.com/FahmiYoshikage/sugi.git
 cd sugi
@@ -84,7 +103,7 @@ go build -o sugi ./cmd/sugi
 Open your browser and navigate to:
 👉 **`http://localhost:8080`**
 
-### 2. CLI Options
+### CLI Options
 ```text
 Usage of sugi:
   -port int
