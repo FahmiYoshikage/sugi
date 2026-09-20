@@ -63,9 +63,70 @@ jobs:
         run: |
           go build -v -trimpath -ldflags="-s -w" -o dist/sugi-linux-arm64 ./cmd/sugi
 
+      - name: Package Debian (.deb) Installers
+        run: |
+          VERSION="0.1.0"
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "Packaging Debian installers for version: ${VERSION}"
+
+          # 1. Package AMD64 .deb
+          mkdir -p deb-amd64/DEBIAN deb-amd64/usr/bin deb-amd64/lib/systemd/system
+          cp dist/sugi-linux-amd64 deb-amd64/usr/bin/sugi
+          chmod 755 deb-amd64/usr/bin/sugi
+          cat <<EOF > deb-amd64/DEBIAN/control
+          Package: sugi
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: FahmiYoshikage <https://github.com/FahmiYoshikage/sugi>
+          Homepage: https://fahmiyoshikage.github.io/sugi/
+          Description: Zero-dependency, ultra-lightweight single-binary observability engine in pure Go.
+           Real-time Linux system metrics and structured log aggregator with embedded dark-mode dashboard.
+          EOF
+          cat <<EOF > deb-amd64/lib/systemd/system/sugi.service
+          [Unit]
+          Description=Sugi Observability Engine
+          After=network.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/sugi -port 8080 -db /var/lib/sugi/sugi.db
+          Restart=always
+          RestartSec=5s
+          StateDirectory=sugi
+          WorkingDirectory=/var/lib/sugi
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          dpkg-deb --build --root-owner-group deb-amd64 "dist/sugi_${VERSION}_linux_amd64.deb"
+
+          # 2. Package ARM64 .deb
+          mkdir -p deb-arm64/DEBIAN deb-arm64/usr/bin deb-arm64/lib/systemd/system
+          cp dist/sugi-linux-arm64 deb-arm64/usr/bin/sugi
+          chmod 755 deb-arm64/usr/bin/sugi
+          cat <<EOF > deb-arm64/DEBIAN/control
+          Package: sugi
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: arm64
+          Maintainer: FahmiYoshikage <https://github.com/FahmiYoshikage/sugi>
+          Homepage: https://fahmiyoshikage.github.io/sugi/
+          Description: Zero-dependency, ultra-lightweight single-binary observability engine in pure Go.
+           Real-time Linux system metrics and structured log aggregator with embedded dark-mode dashboard.
+          EOF
+          cp deb-amd64/lib/systemd/system/sugi.service deb-arm64/lib/systemd/system/sugi.service
+          dpkg-deb --build --root-owner-group deb-arm64 "dist/sugi_${VERSION}_linux_arm64.deb"
+
       - name: Generate Checksums
         working-directory: dist
-        run: sha256sum sugi-linux-* > checksums.txt
+        run: sha256sum sugi* > checksums.txt
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
