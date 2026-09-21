@@ -31,6 +31,10 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 4rem 4rem;
 }
 
 /* Typography */
@@ -162,12 +166,44 @@ code {
   max-width: 960px;
   margin: 0 auto;
   position: relative;
+  overflow: hidden;
+}
+
+/* HugoBlox-style ambient glow orbs */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(88, 166, 255, 0.12) 0%, rgba(163, 113, 247, 0.06) 40%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 80px;
+  right: -100px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(63, 185, 80, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .hero-brand-badge {
   position: relative;
   display: inline-block;
   margin-bottom: 2.5rem;
+  z-index: 1;
 }
 
 .hero-logo-glow {
@@ -227,7 +263,15 @@ code {
   font-weight: 800;
   letter-spacing: -1.5px;
   margin-bottom: 1.5rem;
-  background: linear-gradient(180deg, #ffffff 30%, #8b949e 100%);
+  line-height: 1.1;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-gradient-text {
+  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 50%, var(--accent-green) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -473,6 +517,56 @@ code {
   .stat-item { flex: 0 0 calc(50% - 1rem); }
 }
 
+/* Ecosystem Compatibility Strip */
+.ecosystem-strip {
+  padding: 3rem 1.5rem 1rem;
+  text-align: center;
+}
+
+.ecosystem-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.ecosystem-badges {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  flex-wrap: wrap;
+  max-width: 950px;
+  margin: 0 auto;
+}
+
+.eco-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.eco-badge svg {
+  color: var(--accent-blue);
+}
+
+.eco-badge:hover {
+  color: var(--text-primary);
+  border-color: rgba(88, 166, 255, 0.35);
+  background: rgba(88, 166, 255, 0.08);
+  transform: translateY(-1px);
+}
+
 /* Sections */
 .section {
   padding: 6rem 1.5rem;
@@ -646,6 +740,88 @@ th.highlight-col {
 
 td.highlight-col {
   color: #fff;
+}
+
+/* Frequently Asked Questions */
+.faq-grid {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.faq-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.faq-item:hover {
+  border-color: rgba(88, 166, 255, 0.3);
+  background: rgba(22, 27, 34, 0.6);
+}
+
+.faq-item[open] {
+  border-color: rgba(88, 166, 255, 0.4);
+  background: rgba(22, 27, 34, 0.7);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.faq-question {
+  padding: 1.25rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  color: var(--text-primary);
+  transition: color 0.2s ease;
+}
+
+.faq-question::-webkit-details-marker {
+  display: none;
+}
+
+.faq-question:hover {
+  color: var(--accent-blue);
+}
+
+.faq-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  transition: transform 0.25s ease, color 0.25s ease;
+  flex-shrink: 0;
+}
+
+.faq-item[open] .faq-icon {
+  transform: rotate(180deg);
+  color: var(--accent-blue);
+}
+
+.faq-answer {
+  padding: 0 1.5rem 1.35rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.faq-answer p {
+  margin: 0;
+}
+
+.faq-answer code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: var(--accent-blue);
+  font-size: 0.85em;
 }
 
 /* Final CTA */

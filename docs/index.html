@@ -39,6 +39,35 @@
         "@type": "Organization",
         "name": "Sugi Project",
         "url": "https://github.com/FahmiYoshikage/sugi"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does Sugi maintain such a small RAM footprint (< 16 MB)?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sugi is compiled in pure Go without CGO or external heavyweight runtimes. It parses the Linux pseudo-filesystem directly into fixed-size stack buffers without heap allocations."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Sugi require root or sudo access?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Reading standard system metrics from /proc requires ordinary unprivileged user permissions."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can Sugi run in air-gapped or fully offline environments?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, 100%. Sugi has zero external network dependencies. The entire web UI, custom HTML5 Canvas charting engine, and SQLite database are embedded directly into the single binary."
+            }
+          }
+        ]
       }
     ]
   }
@@ -58,6 +87,7 @@
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="#compare">Comparison</a>
+        <a href="#faq">FAQ</a>
         <a href="#install">Install</a>
         <a href="https://github.com/FahmiYoshikage/sugi#readme" target="_blank" rel="noopener">Docs</a>
         <a href="https://github.com/FahmiYoshikage/sugi" target="_blank" rel="noopener" class="btn btn-github">
@@ -83,7 +113,7 @@
         <span>Production Ready v0.2.0 &bull; MIT License</span>
       </div>
       
-      <h1>Ultra-Lightweight Linux<br>Observability Engine</h1>
+      <h1>Ultra-Lightweight Linux<br><span class="hero-gradient-text">Observability Engine</span></h1>
       <p class="hero-subtitle">
         Monitor CPU, Memory, Disk, and Network with an embedded dark-mode dashboard and SQLite log aggregator.
         Compiled into a single 15MB binary. <strong>No Node.js. No Docker runtime. No external database.</strong>
@@ -168,6 +198,37 @@
         </div>
       </div>
     </div>
+
+    <!-- Ecosystem Compatibility Strip -->
+    <section class="ecosystem-strip">
+      <div class="ecosystem-title">Engineered for Any Linux Environment</div>
+      <div class="ecosystem-badges">
+        <span class="eco-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          Ubuntu &amp; Debian
+        </span>
+        <span class="eco-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+          Arch Linux
+        </span>
+        <span class="eco-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          Alpine Linux
+        </span>
+        <span class="eco-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg>
+          RHEL &amp; Fedora
+        </span>
+        <span class="eco-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+          Raspberry Pi (ARM64)
+        </span>
+        <span class="eco-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+          Docker &amp; Containers
+        </span>
+      </div>
+    </section>
 
     <!-- Key Features -->
     <section id="features" class="section">
@@ -303,6 +364,68 @@
       </div>
     </section>
 
+    <!-- Frequently Asked Questions (HugoBlox Style) -->
+    <section id="faq" class="section">
+      <div class="section-container">
+        <div class="section-header">
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about Sugi's architecture, deployment, and performance.</p>
+        </div>
+
+        <div class="faq-grid">
+          <details class="faq-item" open>
+            <summary class="faq-question">
+              <span>How does Sugi maintain such a small RAM footprint (&lt; 16 MB)?</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Sugi is compiled in pure Go without CGO or external heavyweight runtimes. It parses the Linux pseudo-filesystem (<code>/proc/stat</code>, <code>/proc/meminfo</code>, <code>/proc/diskstats</code>, <code>/proc/net/dev</code>) directly into fixed-size stack buffers without heap allocations. Its embedded SQLite engine operates in WAL mode with connection pooling and automated vacuuming.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Does Sugi require root or sudo access?</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>No. Reading standard system metrics from <code>/proc</code> requires ordinary unprivileged user permissions. For automated host syslog harvesting (<code>/var/log/syslog</code>, <code>/var/log/auth.log</code>), your user simply needs read access or membership in the standard Linux <code>adm</code> or <code>systemd-journal</code> group.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Can Sugi run in air-gapped or fully offline environments?</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Yes, 100%. Sugi has zero external network dependencies. The entire web UI, custom HTML5 Canvas charting engine, SQLite database, and metric aggregators are embedded directly into the single binary via <code>go:embed</code>. No CDN requests, no npm scripts, and no external telemetry calls are ever made.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>How are logs persisted, pruned, and backed up?</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Logs are buffered through an async bounded queue and written in batch transactions to embedded SQLite with Write-Ahead Logging (WAL). A background worker automatically purges logs beyond your retention policy (configurable via <code>-retention 7d</code>). Live hot backups can be triggered anytime via <code>VACUUM INTO</code> without taking the server offline.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>How do I deploy Sugi as a background systemd service?</span>
+              <svg class="faq-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Our pre-compiled Debian packages (<code>.deb</code>) automatically register and enable a <code>sugi.service</code> systemd unit upon installation (<code>sudo apt install ./sugi_0.2.0_linux_amd64.deb</code>). Alternatively, a production-ready systemd unit template is documented in our README for manual setups.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
     <!-- Final CTA Section -->
     <section class="final-cta">
       <div class="final-cta-bg"></div>
@@ -336,6 +459,7 @@
             <li><a href="https://github.com/FahmiYoshikage/sugi#readme" target="_blank" rel="noopener">Documentation</a></li>
             <li><a href="https://github.com/FahmiYoshikage/sugi/releases" target="_blank" rel="noopener">Changelog</a></li>
             <li><a href="#compare">Comparison</a></li>
+            <li><a href="#faq">FAQ</a></li>
           </ul>
         </div>
         
