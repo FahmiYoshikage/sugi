@@ -14,7 +14,7 @@ import (
 	"github.com/FahmiYoshikage/sugi/internal/storage"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	portFlag := flag.Int("port", 8080, "HTTP server port")

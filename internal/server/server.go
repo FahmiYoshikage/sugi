@@ -37,7 +37,7 @@ func DefaultConfig() Config {
 		DBPath:         "sugi.db",
 		Retention:      7 * 24 * time.Hour,
 		SampleInterval: 1 * time.Second,
-		Version:        "0.1.0",
+		Version:        "0.2.0",
 		AutoSyslog:     true,
 		WatchLogs:      "",
 	}
@@ -77,7 +77,7 @@ func NewServer(cfg Config) (*Server, error) {
 		cfg.SampleInterval = 1 * time.Second
 	}
 	if cfg.Version == "" {
-		cfg.Version = "0.1.0"
+		cfg.Version = "0.2.0"
 	}
 
 	// 1. Storage: RingBuffer
