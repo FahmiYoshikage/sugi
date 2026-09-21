@@ -51,9 +51,17 @@ body {
   color: var(--text-primary);
 }
 
-.brand svg {
+.brand-logo {
   width: 32px;
   height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.brand:hover .brand-logo {
+  filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.5));
+  transform: scale(1.05);
 }
 
 .brand-title {
