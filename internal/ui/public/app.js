@@ -207,6 +207,15 @@ function setupSSE() {
     }
   });
 
+  es.addEventListener('log', (e) => {
+    try {
+      const entry = JSON.parse(e.data);
+      prependLiveLog(entry);
+    } catch (err) {
+      console.error('SSE log parse error:', err);
+    }
+  });
+
   es.onerror = () => {
     state.connected = false;
     if (statusText) statusText.innerText = 'Reconnecting...';
@@ -338,6 +347,94 @@ function getPillClass(lvl) {
     case 'WARN': return 'pill-warn';
     case 'DEBUG': return 'pill-debug';
     default: return 'pill-info';
+  }
+}
+
+// Prepend real-time live log from SSE
+function prependLiveLog(l) {
+  const tbody = document.getElementById('log-tbody');
+  if (!tbody) return;
+
+  const currentLevel = (document.getElementById('log-level')?.value || '').toUpperCase();
+  const currentSearch = (document.getElementById('log-search')?.value || '').toLowerCase();
+
+  if (currentLevel && (l.level || '').toUpperCase() !== currentLevel) {
+    return;
+  }
+  if (currentSearch && !l.message?.toLowerCase().includes(currentSearch) && !l.service?.toLowerCase().includes(currentSearch)) {
+    return;
+  }
+
+  // Clear 'No logs found' placeholder if present
+  const firstRow = tbody.querySelector('tr td[colspan]');
+  if (firstRow) {
+    tbody.innerHTML = '';
+  }
+
+  const tr = document.createElement('tr');
+  const ts = new Date(l.timestamp).toLocaleTimeString();
+  const pillClass = getPillClass(l.level);
+  const attrStr = l.attributes ? JSON.stringify(l.attributes) : '-';
+
+  tr.innerHTML = `
+    <td style="color:#8b949e;">${escapeHTML(ts)}</td>
+    <td><span class="pill ${pillClass}">${escapeHTML(l.level)}</span></td>
+    <td style="color:#58a6ff;">${escapeHTML(l.service)}</td>
+    <td>${escapeHTML(l.message)}</td>
+    <td style="color:#8b949e;font-size:0.75rem;">${escapeHTML(attrStr)}</td>
+  `;
+
+  tbody.insertBefore(tr, tbody.firstChild);
+
+  // Keep max 100 rows in DOM
+  while (tbody.children.length > 100) {
+    tbody.removeChild(tbody.lastChild);
+  }
+}
+
+// Simulate Log Burst for testing
+async function simulateLogBurst() {
+  const btn = document.getElementById('burst-btn');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = 'Sending Burst...';
+  }
+
+  const sampleMessages = [
+    { level: 'INFO', service: 'auth-api', msg: 'User session verified for user_id: 8192' },
+    { level: 'WARN', service: 'auth-api', msg: 'Failed password attempt for invalid user admin from 198.51.100.22' },
+    { level: 'INFO', service: 'payment-gw', msg: 'Stripe webhook received: payment_intent.succeeded' },
+    { level: 'INFO', service: 'postgres-db', msg: 'WAL checkpoint completed: 42 pages synced in 14ms' },
+    { level: 'WARN', service: 'redis-cache', msg: 'Evicted 48 keys due to maxmemory-policy volatile-lru' },
+    { level: 'ERROR', service: 'worker-queue', msg: 'Job #9218 timed out after 30000ms: external webhook unreachable' },
+    { level: 'INFO', service: 'nginx', msg: 'GET /api/v1/metrics 200 4.2ms - Mozilla/5.0' },
+    { level: 'INFO', service: 'nginx', msg: 'POST /api/v1/checkout 201 12.8ms - curl/8.5.0' },
+    { level: 'ERROR', service: 'auth-api', msg: 'JWT validation error: token expired' },
+    { level: 'INFO', service: 'worker-queue', msg: 'Processed batch of 50 background notifications in 118ms' }
+  ];
+
+  const payload = sampleMessages.map(m => ({
+    timestamp: new Date().toISOString(),
+    level: m.level,
+    service: m.service,
+    message: m.msg,
+    attributes: { environment: 'production', host: 'host-01' }
+  }));
+
+  try {
+    await fetch('/api/v1/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error('Failed to send log burst:', err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
   }
 }
 

@@ -138,6 +138,9 @@ func (h *APIHandler) HandleIngestLogs(w http.ResponseWriter, r *http.Request) {
 
 		if h.logWriter.Enqueue(entry) {
 			accepted++
+			if h.sseHub != nil {
+				h.sseHub.BroadcastLog(entry)
+			}
 		} else {
 			dropped++
 		}

@@ -104,6 +104,21 @@ func (h *SSEHub) BroadcastSnapshot(snapshot model.SystemSnapshot) {
 	}
 }
 
+// BroadcastLog serializes and broadcasts a single log entry to all connected clients.
+func (h *SSEHub) BroadcastLog(entry model.LogEntry) {
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return
+	}
+
+	ssePayload := fmt.Sprintf("event: log\ndata: %s\n\n", data)
+	select {
+	case h.broadcast <- []byte(ssePayload):
+	default:
+		// Buffer is full, drop to preserve latency
+	}
+}
+
 // ClientCount returns the number of currently connected SSE clients.
 func (h *SSEHub) ClientCount() int {
 	h.mu.RLock()

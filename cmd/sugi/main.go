@@ -25,6 +25,8 @@ func main() {
 	backupIntervalFlag := flag.Duration("backup-interval", 0, "Automated backup interval (e.g. 24h, 0 to disable)")
 	backupNowFlag := flag.String("backup-to", "", "Perform an immediate point-in-time backup to specified file and exit")
 	restoreFromFlag := flag.String("restore-from", "", "Restore SQLite database from backup file into -db and exit")
+	autoSyslogFlag := flag.Bool("auto-syslog", true, "Auto-harvest Linux host syslog (/var/log/syslog, /var/log/auth.log, /var/log/messages)")
+	watchLogsFlag := flag.String("watch-logs", "", "Comma-separated list of log file paths to actively tail")
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 
 	flag.Parse()
@@ -69,6 +71,8 @@ func main() {
 		BackupInterval: *backupIntervalFlag,
 		BackupDir:      *backupDirFlag,
 		Version:        version,
+		AutoSyslog:     *autoSyslogFlag,
+		WatchLogs:      *watchLogsFlag,
 	}
 
 	printBanner(cfg)
@@ -132,6 +136,12 @@ func printBanner(cfg server.Config) {
 	fmt.Printf("  -> SQLite Database : %s (WAL Mode)\n", cfg.DBPath)
 	fmt.Printf("  -> Log Retention   : %s\n", cfg.Retention)
 	fmt.Printf("  -> Sampling Rate   : %s\n", cfg.SampleInterval)
+	if cfg.AutoSyslog {
+		fmt.Println("  -> Host Log Auto   : Active (monitoring /var/log/syslog)")
+	}
+	if cfg.WatchLogs != "" {
+		fmt.Printf("  -> Watched Logs    : %s\n", cfg.WatchLogs)
+	}
 	if cfg.BackupInterval > 0 {
 		fmt.Printf("  -> Auto Backup     : every %s to %s\n", cfg.BackupInterval, cfg.BackupDir)
 	}

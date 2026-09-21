@@ -2,7 +2,7 @@
   <img src="assets/logo.png" alt="Sugi Observability Engine Logo" width="160" style="border-radius: 24px;">
 </p>
 
-# Sugi 🌲
+# Sugi
 
 <p align="center">
   <strong>A zero-dependency, ultra-lightweight single-binary observability engine in pure Go.</strong><br>
@@ -20,7 +20,7 @@
 
 ---
 
-## 🌟 Philosophy & Core Strengths
+## Philosophy & Core Strengths
 
 1. **Single Binary Executable (`./sugi`)**:
    Backend engine, persistent embedded database, and real-time frontend dashboard are compiled into a **single binary** (~15 MB). No Node.js runtime, no Docker daemon required, no external PostgreSQL/MySQL.
@@ -28,10 +28,10 @@
    100% CGO-free (powered by pure-Go SQLite `modernc.org/sqlite`). Seamless cross-compilation for `linux/amd64` and `linux/arm64`.
 3. **Minimal Resource Footprint**:
    Runs continuously with **~16 MB RAM** and **~0.3% CPU** on Linux hosts.
-4. **Native Linux Kernel Observability**:
-   Direct high-performance parsing of pseudo-filesystem `/proc/stat`, `/proc/meminfo`, `/proc/diskstats`, and `/proc/net/dev` with zero third-party dependencies.
+4. **Native Linux Kernel & Host Log Harvester**:
+   Direct high-performance parsing of `/proc/stat`, `/proc/meminfo`, `/proc/diskstats`, and `/proc/net/dev`, alongside an active host log harvester auto-tailing `/var/log/syslog` and `/var/log/auth.log` with zero external agents.
 5. **Real-Time Streaming via Server-Sent Events (SSE)**:
-   Per-second live metrics broadcasting to web interfaces via `GET /api/v1/stream`.
+   Per-second live metrics and log broadcasting to web interfaces via `GET /api/v1/stream`.
 6. **Embedded Dark-Mode Web Dashboard**:
    Zero npm, zero external CDN, and zero build toolchains. Includes a custom **HTML5 Canvas Charting Engine** (~150 LOC) with Retina High-DPI support, smooth gradient fills, and auto-scaling axes.
 7. **Production Data Resilience**:
@@ -39,7 +39,7 @@
 
 ---
 
-## 🏛 Architecture Diagram
+## Architecture Diagram
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -51,7 +51,8 @@
 |  | - /proc/meminfo (RAM)  |  | - Bounded Go Channel     |  | - Embedded SQLite |  |
 |  | - /proc/diskstats (I/O)|  | - JSON & Raw Text        |  |   (WAL Mode)      |  |
 |  | - /proc/net/dev (Net)  |  +------------+-------------+  | - Auto Pruner     |  |
-|  +-----------+------------+               |                +---------+---------+  |
+|  | - Host Syslog Tailer   |               |                +---------+---------+  |
+|  +-----------+------------+               |                          |            |
 |              |                            v                          |            |
 |              |                  Async Batch Worker                   |            |
 |              |                            |                          |            |
@@ -73,7 +74,7 @@
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 ### Method A: One-Line Installer (Recommended)
 Installs the latest pre-compiled binary for your architecture (`amd64` or `arm64`) to `/usr/local/bin/sugi`:
@@ -101,7 +102,7 @@ go build -o sugi ./cmd/sugi
 ```
 
 Open your browser and navigate to:
-👉 **`http://localhost:8080`**
+**`http://localhost:8080`**
 
 ### CLI Options
 ```text
@@ -114,6 +115,10 @@ Usage of sugi:
         Log retention period (e.g. 24h, 7d, 30d) (default "7d")
   -interval duration
         System metric sampling interval (default 1s)
+  -auto-syslog
+        Auto-harvest Linux host syslog (/var/log/syslog, /var/log/auth.log) (default true)
+  -watch-logs string
+        Comma-separated list of log file paths to actively tail
   -backup-dir string
         Directory for automated SQLite backups (default "backups")
   -backup-interval duration
@@ -128,7 +133,7 @@ Usage of sugi:
 
 ---
 
-## 📡 HTTP REST API Reference
+## HTTP REST API Reference
 
 ### 1. Ingest Logs (`POST /api/v1/logs`)
 Accepts single JSON, JSON arrays, or raw newline-delimited text logs.
@@ -181,7 +186,7 @@ curl http://localhost:8080/health
 
 ---
 
-## 💾 Backup & Disaster Recovery
+## Backup & Disaster Recovery
 
 ### Online Snapshot Backup (Zero Downtime)
 Leverages SQLite's online `VACUUM INTO` command to generate an atomic, compacted snapshot:
@@ -201,7 +206,7 @@ Leverages SQLite's online `VACUUM INTO` command to generate an atomic, compacted
 
 ---
 
-## ⚙️ Systemd Service Deployment
+## Systemd Service Deployment
 
 Create `/etc/systemd/system/sugi.service`:
 ```ini
@@ -230,7 +235,7 @@ sudo systemctl enable --now sugi
 
 ---
 
-## 🧪 Testing & Benchmarks
+## Testing & Benchmarks
 
 ```bash
 # Run all unit tests with race detection
@@ -253,7 +258,7 @@ go test -bench=. -benchmem ./...
 
 ---
 
-## 📄 License
+## License
 
 Distributed under the [MIT License](LICENSE).
 Copyright (c) 2026 FahmiYoshikage.

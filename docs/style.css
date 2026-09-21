@@ -403,7 +403,22 @@ body {
   transform: translateY(-3px);
 }
 
-.feature-icon {
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+  display: inline-block;
+  animation: pulse-dot-glow 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.feature-icon-svg {
   width: 44px;
   height: 44px;
   border-radius: 10px;
@@ -411,9 +426,17 @@ body {
   align-items: center;
   justify-content: center;
   margin-bottom: 1.25rem;
-  font-size: 1.5rem;
-  background: rgba(88, 166, 255, 0.1);
-  color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.08);
+  border: 1px solid rgba(88, 166, 255, 0.18);
+  color: #58a6ff;
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover .feature-icon-svg {
+  background: rgba(88, 166, 255, 0.16);
+  border-color: rgba(88, 166, 255, 0.4);
+  transform: translateY(-2px);
+  color: #79c0ff;
 }
 
 .feature-card h3 {

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/FahmiYoshikage/sugi/internal/api"
@@ -24,6 +26,8 @@ type Config struct {
 	BackupInterval time.Duration
 	BackupDir      string
 	Version        string
+	AutoSyslog     bool
+	WatchLogs      string
 }
 
 // DefaultConfig returns production default configurations.
@@ -34,6 +38,8 @@ func DefaultConfig() Config {
 		Retention:      7 * 24 * time.Hour,
 		SampleInterval: 1 * time.Second,
 		Version:        "0.1.0",
+		AutoSyslog:     true,
+		WatchLogs:      "",
 	}
 }
 
@@ -50,6 +56,8 @@ type Server struct {
 	memCol  *collector.MemCollector
 	diskCol *collector.DiskCollector
 	netCol  *collector.NetCollector
+
+	harvester *collector.LogHarvester
 
 	stopChan chan struct{}
 }
@@ -120,6 +128,30 @@ func NewServer(cfg Config) (*Server, error) {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// 6. Native Linux Host Log Harvester
+	var watchPaths []string
+	if cfg.WatchLogs != "" {
+		for _, p := range strings.Split(cfg.WatchLogs, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				watchPaths = append(watchPaths, p)
+			}
+		}
+	}
+
+	harvesterCfg := collector.LogHarvesterConfig{
+		AutoSyslog:   cfg.AutoSyslog,
+		WatchPaths:   watchPaths,
+		TailLines:    50,
+		PollInterval: 1 * time.Second,
+		MaxRate:      500,
+	}
+	harvester := collector.NewLogHarvester(harvesterCfg, func(entry model.LogEntry) {
+		if logWriter.Enqueue(entry) && sseHub != nil {
+			sseHub.BroadcastLog(entry)
+		}
+	})
+
 	return &Server{
 		cfg:        cfg,
 		httpServer: httpServer,
@@ -131,13 +163,58 @@ func NewServer(cfg Config) (*Server, error) {
 		memCol:     memCol,
 		diskCol:    diskCol,
 		netCol:     netCol,
+		harvester:  harvester,
 		stopChan:   make(chan struct{}),
 	}, nil
 }
 
-// Start begins background sampling and starts the HTTP server.
+// Start begins background sampling, starts log harvesting, and starts the HTTP server.
 func (s *Server) Start() error {
 	go s.metricSamplingLoop()
+
+	// Ingest Sugi startup self-observability logs
+	now := time.Now().UTC()
+	startupLogs := []model.LogEntry{
+		{
+			Timestamp:  now,
+			Level:      "INFO",
+			Service:    "sugi-core",
+			Message:    fmt.Sprintf("Sugi Observability Engine v%s started", s.cfg.Version),
+			Attributes: map[string]string{"pid": fmt.Sprintf("%d", os.Getpid()), "port": fmt.Sprintf("%d", s.cfg.Port)},
+		},
+		{
+			Timestamp:  now.Add(time.Millisecond),
+			Level:      "INFO",
+			Service:    "storage",
+			Message:    fmt.Sprintf("SQLite WAL storage ready (retention: %s)", s.cfg.Retention),
+			Attributes: map[string]string{"db": s.cfg.DBPath},
+		},
+		{
+			Timestamp:  now.Add(2 * time.Millisecond),
+			Level:      "INFO",
+			Service:    "collector",
+			Message:    fmt.Sprintf("Linux procfs metrics collector online (sampling rate: %s)", s.cfg.SampleInterval),
+			Attributes: map[string]string{"interval": s.cfg.SampleInterval.String()},
+		},
+		{
+			Timestamp:  now.Add(3 * time.Millisecond),
+			Level:      "INFO",
+			Service:    "http-server",
+			Message:    fmt.Sprintf("Web dashboard and API listening on :%d", s.cfg.Port),
+			Attributes: map[string]string{"url": fmt.Sprintf("http://localhost:%d", s.cfg.Port)},
+		},
+	}
+
+	for _, entry := range startupLogs {
+		if s.logWriter.Enqueue(entry) && s.apiHandler.SSEHub() != nil {
+			s.apiHandler.SSEHub().BroadcastLog(entry)
+		}
+	}
+
+	// Start native host log harvester in background
+	if s.harvester != nil {
+		go s.harvester.Start(context.Background())
+	}
 
 	if s.cfg.BackupInterval > 0 {
 		go s.backupLoop()
@@ -218,6 +295,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	// Close SSE connections
 	s.apiHandler.SSEHub().Close()
+
+	// Stop log harvester
+	if s.harvester != nil {
+		s.harvester.Stop()
+	}
 
 	// Shutdown HTTP listener first to stop incoming requests
 	if err := s.httpServer.Shutdown(ctx); err != nil {
